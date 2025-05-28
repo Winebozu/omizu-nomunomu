@@ -7,11 +7,18 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="水分補給">
     <title>水分補給アプリ</title>
+    
+    <!-- アイコン設定 -->
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icon.svg">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0EA5E9">
+    
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDE4MCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIiByeD0iNDAiIGZpbGw9IiMzQjgyRjYiLz4KPHN2ZyB4PSI0NSIgeT0iNDUiIHdpZHRoPSI5MCIgaGVpZ2h0PSI5MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+CjxwYXRoIGQ9Im0xMiAyIDMgN3MgMCA1LTMgNS0zLTUtMy01eiIvPgo8L3N2Zz4KPC9zdmc+">
+    
     <style>
         .animate-bounce {
             animation: bounce 1s infinite;
@@ -103,7 +110,7 @@
         const HydrationApp = () => {
           const [waterCount, setWaterCount] = useState(0);
           const [dailyGoal, setDailyGoal] = useState(8);
-          const [notifications, setNotifications] = useState(true);
+          const [notifications, setNotifications] = useState(false);
           const [showSettings, setShowSettings] = useState(false);
           const [soundEnabled, setSoundEnabled] = useState(true);
           const [vibrationEnabled, setVibrationEnabled] = useState(true);
@@ -113,11 +120,13 @@
 
           const today = new Date().toLocaleDateString('ja-JP');
 
+          // ローカルストレージから今日のデータを読み込み
           useEffect(() => {
             const savedData = localStorage.getItem(`hydration_${today}`);
             const savedGoal = localStorage.getItem('hydration_goal');
             const savedSound = localStorage.getItem('hydration_sound');
             const savedVibration = localStorage.getItem('hydration_vibration');
+            const savedNotifications = localStorage.getItem('hydration_notifications');
             
             if (savedData) {
               const data = JSON.parse(savedData);
@@ -136,8 +145,16 @@
             if (savedVibration !== null) {
               setVibrationEnabled(savedVibration === 'true');
             }
+            
+            // 通知設定の復元：許可されている場合のみオンにする
+            if (savedNotifications !== null && Notification.permission === 'granted') {
+              setNotifications(savedNotifications === 'true');
+            } else {
+              setNotifications(false); // 許可されていない場合は強制的にオフ
+            }
           }, [today]);
 
+          // データをローカルストレージに保存
           useEffect(() => {
             const data = {
               count: waterCount,
@@ -146,6 +163,7 @@
             localStorage.setItem(`hydration_${today}`, JSON.stringify(data));
           }, [waterCount, lastDrinkTime, today]);
 
+          // 設定をローカルストレージに保存
           useEffect(() => {
             localStorage.setItem('hydration_goal', dailyGoal.toString());
           }, [dailyGoal]);
@@ -158,18 +176,29 @@
             localStorage.setItem('hydration_vibration', vibrationEnabled.toString());
           }, [vibrationEnabled]);
 
+          // 通知設定の保存
           useEffect(() => {
-            if (!notifications) return;
+            localStorage.setItem('hydration_notifications', notifications.toString());
+          }, [notifications]);
 
+          // 1時間ごとの通知設定（本番版）
+          useEffect(() => {
+            // 既存のintervalをクリア（重複防止）
             const interval = setInterval(() => {
+              if (!notifications) return; // 通知がOFFの場合は何もしない
+              
+              // 最後に飲んでから1時間以上経過している場合のみ通知
               const now = new Date();
-              if (!lastDrinkTime || (now - lastDrinkTime) >= 3600000) {
+              if (!lastDrinkTime || (now - lastDrinkTime) >= 3600000) { // 1時間 = 3,600,000ミリ秒
                 showNotification();
               }
-            }, 3600000);
+            }, 3600000); // 1時間ごとにチェック
 
-            return () => clearInterval(interval);
-          }, [notifications, lastDrinkTime]);
+            // クリーンアップ関数：コンポーネント再レンダリング時に必ず実行
+            return () => {
+              clearInterval(interval);
+            };
+          }, [notifications, lastDrinkTime]); // 依存配列に notifications を含める
 
           const playNotificationSound = () => {
             try {
@@ -206,8 +235,8 @@
             if ('Notification' in window && Notification.permission === 'granted') {
               new Notification('💧 水分補給の時間です！', {
                 body: '100mlの水を飲みましょう',
-                icon: '💧',
-                badge: '💧',
+                icon: './icon.svg',
+                badge: './icon.svg',
                 tag: 'hydration-reminder',
                 requireInteraction: true,
                 vibrate: vibrationEnabled ? [200, 100, 200] : [],
@@ -227,13 +256,34 @@
             }
           };
 
+          // 通知許可を要求（改善版）
           const requestNotificationPermission = () => {
+            console.log('現在の通知許可状態:', Notification.permission);
+            
             if ('Notification' in window) {
-              Notification.requestPermission().then(permission => {
-                if (permission === 'granted') {
-                  setNotifications(true);
-                }
-              });
+              if (Notification.permission === 'default') {
+                // まだ許可を求めていない場合
+                Notification.requestPermission().then(permission => {
+                  console.log('通知許可結果:', permission);
+                  if (permission === 'granted') {
+                    setNotifications(true);
+                    alert('通知が許可されました！1時間後からリマインダーが開始されます。');
+                  } else {
+                    setNotifications(false);
+                    alert('通知が拒否されました。いつでも設定から変更できます。');
+                  }
+                });
+              } else if (Notification.permission === 'granted') {
+                // 既に許可されている場合は単純にトグル
+                const newState = !notifications;
+                setNotifications(newState);
+                alert(newState ? '通知リマインダーをオンにしました' : '通知リマインダーをオフにしました');
+              } else {
+                // 拒否されている場合
+                alert('通知が拒否されています。\n\nSafari の設定から許可してください：\n設定 → Safari → 通知 → このサイト → 許可');
+              }
+            } else {
+              alert('このブラウザは通知をサポートしていません。');
             }
           };
 
@@ -412,11 +462,34 @@
                           </button>
                         </div>
                         
+                        <div className="bg-white rounded-xl p-4">
+                        <h4 className="text-sm font-medium text-gray-700 mb-3">通知設定</h4>
+                        
+                        {/* 改善された通知許可ボタン */}
+                        <button
+                          onClick={requestNotificationPermission}
+                          className={`w-full mt-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            Notification.permission === 'granted' 
+                              ? notifications 
+                                ? 'bg-green-100 hover:bg-green-200 text-green-700' 
+                                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                              : 'bg-blue-100 hover:bg-blue-200 text-blue-700'
+                          }`}
+                        >
+                          {Notification.permission === 'granted' 
+                            ? notifications 
+                              ? '🔔 通知オン (クリックでオフ)' 
+                              : '🔕 通知オフ (クリックでオン)'
+                            : '🔔 通知許可を設定'
+                          }
+                        </button>
+                        
+                        {/* テスト通知ボタン */}
                         <button
                           onClick={() => showNotification()}
-                          className="w-full mt-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg text-sm font-medium transition-colors"
+                          className="w-full mt-2 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg text-sm font-medium transition-colors"
                         >
-                          🔔 通知をテスト
+                          ✅ 通知をテスト
                         </button>
                       </div>
                     </div>
@@ -493,19 +566,14 @@
                   </div>
                 )}
 
+                {/* 通知設定 */}
                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                   <div className="flex items-center">
                     <Bell className="w-5 h-5 text-gray-600 mr-2" />
                     <span className="text-sm text-gray-700">1時間ごとの通知</span>
                   </div>
                   <button
-                    onClick={() => {
-                      if (!notifications) {
-                        requestNotificationPermission();
-                      } else {
-                        setNotifications(!notifications);
-                      }
-                    }}
+                    onClick={requestNotificationPermission}
                     className={`w-12 h-6 rounded-full transition-colors duration-300 ${
                       notifications ? 'bg-blue-400' : 'bg-gray-300'
                     }`}
