@@ -183,22 +183,19 @@
 
           // 1時間ごとの通知設定（本番版）
           useEffect(() => {
-            // 既存のintervalをクリア（重複防止）
             const interval = setInterval(() => {
-              if (!notifications) return; // 通知がOFFの場合は何もしない
+              if (!notifications) return;
               
-              // 最後に飲んでから1時間以上経過している場合のみ通知
               const now = new Date();
-              if (!lastDrinkTime || (now - lastDrinkTime) >= 3600000) { // 1時間 = 3,600,000ミリ秒
+              if (!lastDrinkTime || (now - lastDrinkTime) >= 3600000) {
                 showNotification();
               }
-            }, 3600000); // 1時間ごとにチェック
+            }, 3600000);
 
-            // クリーンアップ関数：コンポーネント再レンダリング時に必ず実行
             return () => {
               clearInterval(interval);
             };
-          }, [notifications, lastDrinkTime]); // 依存配列に notifications を含める
+          }, [notifications, lastDrinkTime]);
 
           const playNotificationSound = () => {
             try {
@@ -239,32 +236,16 @@
                 badge: './icon.svg',
                 tag: 'hydration-reminder',
                 requireInteraction: true,
-                vibrate: vibrationEnabled ? [200, 100, 200] : [],
-                actions: [
-                  {
-                    action: 'drink',
-                    title: '飲んだ！',
-                    icon: '✅'
-                  },
-                  {
-                    action: 'snooze',
-                    title: '10分後に再通知',
-                    icon: '⏰'
-                  }
-                ]
+                vibrate: vibrationEnabled ? [200, 100, 200] : []
               });
             }
           };
 
-          // 通知許可を要求（改善版）
+          // 通知許可を要求
           const requestNotificationPermission = () => {
-            console.log('現在の通知許可状態:', Notification.permission);
-            
             if ('Notification' in window) {
               if (Notification.permission === 'default') {
-                // まだ許可を求めていない場合
                 Notification.requestPermission().then(permission => {
-                  console.log('通知許可結果:', permission);
                   if (permission === 'granted') {
                     setNotifications(true);
                     alert('通知が許可されました！1時間後からリマインダーが開始されます。');
@@ -274,12 +255,10 @@
                   }
                 });
               } else if (Notification.permission === 'granted') {
-                // 既に許可されている場合は単純にトグル
                 const newState = !notifications;
                 setNotifications(newState);
                 alert(newState ? '通知リマインダーをオンにしました' : '通知リマインダーをオフにしました');
               } else {
-                // 拒否されている場合
                 alert('通知が拒否されています。\n\nSafari の設定から許可してください：\n設定 → Safari → 通知 → このサイト → 許可');
               }
             } else {
@@ -462,32 +441,9 @@
                           </button>
                         </div>
                         
-                        <div className="bg-white rounded-xl p-4">
-                        <h4 className="text-sm font-medium text-gray-700 mb-3">通知設定</h4>
-                        
-                        {/* 改善された通知許可ボタン */}
-                        <button
-                          onClick={requestNotificationPermission}
-                          className={`w-full mt-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            Notification.permission === 'granted' 
-                              ? notifications 
-                                ? 'bg-green-100 hover:bg-green-200 text-green-700' 
-                                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                              : 'bg-blue-100 hover:bg-blue-200 text-blue-700'
-                          }`}
-                        >
-                          {Notification.permission === 'granted' 
-                            ? notifications 
-                              ? '🔔 通知オン (クリックでオフ)' 
-                              : '🔕 通知オフ (クリックでオン)'
-                            : '🔔 通知許可を設定'
-                          }
-                        </button>
-                        
-                        {/* テスト通知ボタン */}
                         <button
                           onClick={() => showNotification()}
-                          className="w-full mt-2 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg text-sm font-medium transition-colors"
+                          className="w-full mt-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg text-sm font-medium transition-colors"
                         >
                           ✅ 通知をテスト
                         </button>
@@ -566,7 +522,6 @@
                   </div>
                 )}
 
-                {/* 通知設定 */}
                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                   <div className="flex items-center">
                     <Bell className="w-5 h-5 text-gray-600 mr-2" />
