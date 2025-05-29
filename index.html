@@ -151,16 +151,17 @@
             }
           }, [vibrationEnabled]);
 
-          // 通知タイマー（現実的なiPhone対応版）
+          // 通知タイマー（テスト用：30秒間隔）
           useEffect(() => {
             if (!notifications) return;
             
             const interval = setInterval(() => {
               const now = new Date();
-              if (!lastDrinkTime || (now - lastDrinkTime) >= 3600000) {
+              // テスト用：最後に飲んでから30秒経過で通知
+              if (!lastDrinkTime || (now - lastDrinkTime) >= 30000) {
                 showNotification();
               }
-            }, 3600000); // 1時間ごと（元の設定に戻す）
+            }, 30000); // 30秒ごとにチェック（テスト用）
 
             return () => clearInterval(interval);
           }, [notifications, lastDrinkTime]);
@@ -529,7 +530,7 @@
                   React.createElement('span', null, '🔔'),
                   React.createElement('span', {
                     className: "text-sm text-gray-700 ml-2"
-                  }, '1時間ごとの通知')
+                  }, '30秒ごとの通知（テスト用）')
                 ),
                 React.createElement('button', {
                   onClick: requestNotificationPermission,
