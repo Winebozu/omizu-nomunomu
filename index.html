@@ -50,7 +50,7 @@
 
         function HydrationApp() {
           const [waterCount, setWaterCount] = useState(0);
-          const [dailyGoal, setDailyGoal] = useState(8);
+          const [dailyGoal, setDailyGoal] = useState(20); // 2リットル = 20回に変更
           const [notifications, setNotifications] = useState(false);
           const [soundEnabled, setSoundEnabled] = useState(true);
           const [vibrationEnabled, setVibrationEnabled] = useState(true);
@@ -75,7 +75,7 @@
               
               const savedGoal = localStorage.getItem('hydration_goal');
               if (savedGoal) {
-                setDailyGoal(parseInt(savedGoal) || 8);
+                setDailyGoal(parseInt(savedGoal) || 20); // デフォルト20回に変更
               }
               
               const savedNotifications = localStorage.getItem('hydration_notifications');
@@ -506,11 +506,6 @@
                 hour: '2-digit', 
                 minute: '2-digit' 
               })}`),
-
-              // 最後に飲んだ時間
-              lastDrinkTime && React.createElement('div', {
-                className: "text-center text-sm text-gray-500"
-              }, `最後に飲んだ時間: ${lastDrinkTime.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`),
 
               // 通知設定
               React.createElement('div', {
