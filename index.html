@@ -45,25 +45,6 @@
         </div>
     </div>
     
-    <!-- Service Worker 登録 -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(function(registration) {
-                        console.log('ServiceWorker 登録成功:', registration.scope);
-                        
-                        // バックグラウンド同期の登録（実験的機能）
-                        if ('sync' in window.ServiceWorkerRegistration.prototype) {
-                            registration.sync.register('hydration-reminder');
-                        }
-                    }, function(err) {
-                        console.log('ServiceWorker 登録失敗:', err);
-                    });
-            });
-        }
-    </script>
-    
     <script type="text/babel">
         const { useState, useEffect } = React;
 
@@ -77,18 +58,8 @@
           const [lastDrinkTime, setLastDrinkTime] = useState(null);
           const [achievement, setAchievement] = useState('');
           const [showCelebration, setShowCelebration] = useState(false);
-          const [swRegistration, setSwRegistration] = useState(null);
 
           const today = new Date().toLocaleDateString('ja-JP');
-
-          // Service Worker 取得
-          useEffect(() => {
-            if ('serviceWorker' in navigator) {
-              navigator.serviceWorker.ready.then(registration => {
-                setSwRegistration(registration);
-              });
-            }
-          }, []);
 
           // データ読み込み
           useEffect(() => {
@@ -168,7 +139,7 @@
             }
           }, [vibrationEnabled]);
 
-          // 通知タイマー（改善版）
+          // 通知タイマー
           useEffect(() => {
             if (!notifications) return;
             
@@ -181,27 +152,6 @@
 
             return () => clearInterval(interval);
           }, [notifications, lastDrinkTime]);
-
-          // バックグラウンド動作の維持
-          useEffect(() => {
-            if (!notifications) return;
-
-            // ページの可視性変更を監視
-            const handleVisibilityChange = () => {
-              if (document.hidden) {
-                console.log('アプリがバックグラウンドに移行しました');
-                // バックグラウンドでもタイマーを継続
-              } else {
-                console.log('アプリがフォアグラウンドに復帰しました');
-              }
-            };
-
-            document.addEventListener('visibilitychange', handleVisibilityChange);
-            
-            return () => {
-              document.removeEventListener('visibilitychange', handleVisibilityChange);
-            };
-          }, [notifications]);
 
           // 音声機能
           const playSound = (frequencies) => {
@@ -233,7 +183,7 @@
             }
           };
 
-          // 通知機能（Service Worker 対応）
+          // 通知機能
           const showNotification = () => {
             try {
               if (vibrationEnabled && navigator.vibrate) {
@@ -246,30 +196,7 @@
             playSound([800, 600, 800]);
 
             try {
-              // Service Worker 経由の通知（よりバックグラウンド対応）
-              if (swRegistration && 'showNotification' in swRegistration) {
-                swRegistration.showNotification('💧 水分補給の時間です！', {
-                  body: '100mlの水を飲みましょう',
-                  icon: './icon.svg',
-                  badge: './icon.svg',
-                  tag: 'hydration-reminder',
-                  requireInteraction: true,
-                  vibrate: vibrationEnabled ? [200, 100, 200] : [],
-                  actions: [
-                    {
-                      action: 'drink',
-                      title: '飲んだ！',
-                      icon: './icon.svg'
-                    },
-                    {
-                      action: 'snooze',
-                      title: '10分後',
-                      icon: './icon.svg'
-                    }
-                  ]
-                });
-              } else if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-                // フォールバック: 通常の通知
+              if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
                 new Notification('💧 水分補給の時間です！', {
                   body: '100mlの水を飲みましょう',
                   icon: './icon.svg',
@@ -292,7 +219,7 @@
                 Notification.requestPermission().then(permission => {
                   if (permission === 'granted') {
                     setNotifications(true);
-                    alert('通知が許可されました！バックグラウンドでも通知が届きます。');
+                    alert('通知が許可されました！');
                   } else {
                     setNotifications(false);
                     alert('通知が拒否されました');
@@ -344,11 +271,6 @@
             React.createElement('div', {
               className: "glass-effect rounded-3xl shadow-2xl p-6 space-y-6 border border-white/20"
             },
-              // Service Worker 状態表示
-              React.createElement('div', {
-                className: "text-center text-xs text-gray-400"
-              }, swRegistration ? '📡 バックグラウンド通知: 有効' : '📡 バックグラウンド通知: 準備中'),
-
               // ヘッダー
               React.createElement('div', {
                 className: "text-center relative"
@@ -365,7 +287,7 @@
                 }, '⚙️')
               ),
 
-              // 設定パネル（省略 - 前回と同じ）
+              // 設定パネル
               showSettings && React.createElement('div', {
                 className: "bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-4 border-2 border-purple-200 shadow-lg"
               },
@@ -420,13 +342,76 @@
                   )
                 ),
 
+                // 通知設定
+                React.createElement('div', {
+                  className: "bg-white rounded-xl p-4 mb-4 shadow-sm"
+                },
+                  React.createElement('h4', {
+                    className: "text-sm font-medium text-gray-700 mb-3"
+                  }, '通知機能'),
+                  
+                  React.createElement('div', {
+                    className: "space-y-3"
+                  },
+                    React.createElement('div', {
+                      className: "flex items-center justify-between"
+                    },
+                      React.createElement('div', {
+                        className: "flex items-center"
+                      },
+                        React.createElement('span', null, '🔊'),
+                        React.createElement('span', {
+                          className: "text-sm text-gray-700 ml-2"
+                        }, '通知音')
+                      ),
+                      React.createElement('button', {
+                        onClick: () => setSoundEnabled(!soundEnabled),
+                        className: `w-10 h-5 rounded-full transition-colors duration-300 ${
+                          soundEnabled ? 'bg-purple-400' : 'bg-gray-300'
+                        }`
+                      },
+                        React.createElement('div', {
+                          className: `w-4 h-4 bg-white rounded-full shadow transition-transform duration-300 ${
+                            soundEnabled ? 'transform translate-x-5' : 'transform translate-x-0.5'
+                          }`
+                        })
+                      )
+                    ),
+
+                    React.createElement('div', {
+                      className: "flex items-center justify-between"
+                    },
+                      React.createElement('div', {
+                        className: "flex items-center"
+                      },
+                        React.createElement('span', null, '📱'),
+                        React.createElement('span', {
+                          className: "text-sm text-gray-700 ml-2"
+                        }, 'バイブレーション')
+                      ),
+                      React.createElement('button', {
+                        onClick: () => setVibrationEnabled(!vibrationEnabled),
+                        className: `w-10 h-5 rounded-full transition-colors duration-300 ${
+                          vibrationEnabled ? 'bg-purple-400' : 'bg-gray-300'
+                        }`
+                      },
+                        React.createElement('div', {
+                          className: `w-4 h-4 bg-white rounded-full shadow transition-transform duration-300 ${
+                            vibrationEnabled ? 'transform translate-x-5' : 'transform translate-x-0.5'
+                          }`
+                        })
+                      )
+                    )
+                  )
+                ),
+
                 React.createElement('button', {
                   onClick: showNotification,
                   className: "w-full py-2 bg-gradient-to-r from-purple-400 to-pink-400 hover:from-purple-500 hover:to-pink-500 text-white rounded-lg text-sm font-medium transition-all shadow-md"
                 }, '🔔 通知をテスト')
               ),
 
-              // 今日の記録（省略 - 前回と同じ構造）
+              // 今日の記録
               React.createElement('div', {
                 className: "bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-4 shadow-lg border border-blue-100"
               },
@@ -514,6 +499,19 @@
                 }, achievement)
               ),
 
+              // 最後に飲んだ時間
+              lastDrinkTime && React.createElement('div', {
+                className: "text-center text-sm text-gray-500"
+              }, `最後に飲んだ時間: ${lastDrinkTime.toLocaleTimeString('ja-JP', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              })}`),
+
+              // 最後に飲んだ時間
+              lastDrinkTime && React.createElement('div', {
+                className: "text-center text-sm text-gray-500"
+              }, `最後に飲んだ時間: ${lastDrinkTime.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`),
+
               // 通知設定
               React.createElement('div', {
                 className: "flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl shadow-sm border border-gray-100"
@@ -524,7 +522,7 @@
                   React.createElement('span', null, '🔔'),
                   React.createElement('span', {
                     className: "text-sm text-gray-700 ml-2"
-                  }, 'バックグラウンド通知')
+                  }, '1時間ごとの通知')
                 ),
                 React.createElement('button', {
                   onClick: requestNotificationPermission,
@@ -540,10 +538,55 @@
                 )
               ),
 
+              // 統計
+              React.createElement('div', {
+                className: "grid grid-cols-3 gap-3 text-center"
+              },
+                React.createElement('div', {
+                  className: "bg-gradient-to-br from-blue-100 to-blue-200 p-4 rounded-xl shadow-md border border-blue-200"
+                },
+                  React.createElement('div', {
+                    className: "text-2xl"
+                  }, '🎯'),
+                  React.createElement('div', {
+                    className: "text-lg font-bold text-blue-700"
+                  }, `${Math.round(progressPercentage)}%`),
+                  React.createElement('div', {
+                    className: "text-xs text-blue-600"
+                  }, '達成率')
+                ),
+                React.createElement('div', {
+                  className: "bg-gradient-to-br from-cyan-100 to-cyan-200 p-4 rounded-xl shadow-md border border-cyan-200"
+                },
+                  React.createElement('div', {
+                    className: "text-2xl"
+                  }, '💧'),
+                  React.createElement('div', {
+                    className: "text-lg font-bold text-cyan-700"
+                  }, waterCount * 100),
+                  React.createElement('div', {
+                    className: "text-xs text-cyan-600"
+                  }, 'ml')
+                ),
+                React.createElement('div', {
+                  className: "bg-gradient-to-br from-emerald-100 to-emerald-200 p-4 rounded-xl shadow-md border border-emerald-200"
+                },
+                  React.createElement('div', {
+                    className: "text-2xl"
+                  }, waterCount >= dailyGoal ? '🏆' : '⭐'),
+                  React.createElement('div', {
+                    className: "text-lg font-bold text-emerald-700"
+                  }, waterCount >= dailyGoal ? 'Complete!' : 'Progress'),
+                  React.createElement('div', {
+                    className: "text-xs text-emerald-600"
+                  }, 'ステータス')
+                )
+              ),
+
               // フッター
               React.createElement('div', {
                 className: "text-center text-xs text-gray-500 bg-gradient-to-r from-gray-50 to-blue-50 p-3 rounded-xl shadow-sm border border-gray-100"
-              }, '💡 PWAとしてホーム画面に追加すると、バックグラウンド通知がより確実に動作します')
+              }, '💡 定期的な水分補給は健康維持に重要です')
             )
           );
         }
@@ -557,6 +600,7 @@
             <div style="padding: 20px; text-align: center; color: red;">
               <h2>エラーが発生しました</h2>
               <p>アプリの読み込みに失敗しました。ページを再読み込みしてください。</p>
+              <p>エラー詳細: ${error.message}</p>
             </div>
           `;
         }
