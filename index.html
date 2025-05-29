@@ -8,10 +8,21 @@
     <meta name="apple-mobile-web-app-title" content="水分補給">
     <title>水分補給アプリ</title>
     
-    <!-- PWA設定 -->
+    <!-- iPhone PWA 最適化 -->
     <link rel="icon" href="./icon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" sizes="180x180" href="./icon-180.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="./icon-32.png">
+    <link rel="apple-touch-icon" href="./icon.svg">
+    <link rel="apple-touch-icon" sizes="180x180" href="./icon.svg">
+    <link rel="apple-touch-icon" sizes="152x152" href="./icon.svg">
+    <link rel="apple-touch-icon" sizes="120x120" href="./icon.svg">
+    <link rel="apple-touch-icon" sizes="76x76" href="./icon.svg">
+    
+    <!-- iPhone Safari 専用設定 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="水分補給">
+    <meta name="format-detection" content="telephone=no">
+    
+    <!-- PWA設定 -->
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#0EA5E9">
     
@@ -140,7 +151,7 @@
             }
           }, [vibrationEnabled]);
 
-          // 通知タイマー
+          // 通知タイマー（現実的なiPhone対応版）
           useEffect(() => {
             if (!notifications) return;
             
@@ -149,7 +160,7 @@
               if (!lastDrinkTime || (now - lastDrinkTime) >= 3600000) {
                 showNotification();
               }
-            }, 3600000);
+            }, 3600000); // 1時間ごと（元の設定に戻す）
 
             return () => clearInterval(interval);
           }, [notifications, lastDrinkTime]);
